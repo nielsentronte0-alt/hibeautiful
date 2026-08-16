@@ -1,0 +1,376 @@
+/* ==========================================================================
+   Garden — scene, layered flowers, staged growth animation, hover,
+   final message, bloom-again
+   ========================================================================== */
+
+.scene {
+  position: fixed; inset: 0; z-index: 2;
+  overflow: hidden;
+}
+
+.garden {
+  position: absolute; inset: 0;
+  transform-origin: 50% 100%;
+  transform: scale(1.07) translateY(2%);
+  transition: transform 3.2s var(--ease-out);
+  will-change: transform;
+}
+.scene.is-active .garden { transform: scale(1) translateY(0); }
+/* the garden is pre-built during idle time; keep it out of paint until the scene starts */
+.scene:not(.is-active) .garden { visibility: hidden; }
+
+.garden__layer {
+  position: absolute; inset: 0;
+  will-change: transform;
+}
+.garden__layer--back  { z-index: 1; }
+.garden__layer--mid   { z-index: 2; }
+.garden__layer--front { z-index: 3; }
+
+/* --------------------------------------------------------------------------
+   Flower structure
+     .fw   position / depth / leave animation
+       .fh  hover scale + tilt (origin bottom)
+         .fs  wind sway (origin bottom)
+           svg.stem-svg    stem (grows via composited scaleY from the base)
+           svg.leaves-svg  leaves (unfold when the stem passes them)
+           .head        positioned at stem tip; hover scale
+             .head-nod  gentle nod/breathe
+               .head-pop  bud pop-in
+                 svg.head-svg  glow, calyx, petals, center, stamens
+   -------------------------------------------------------------------------- */
+.fw {
+  position: absolute;
+  bottom: var(--base, -8px);
+  z-index: var(--z, 1);
+  transform-origin: 50% 100%;
+  pointer-events: none;
+  contain: layout style;
+}
+.fh, .fs {
+  position: absolute; inset: 0;
+  transform-origin: 50% 100%;
+  pointer-events: none;
+}
+.fh {
+  transform: scale(var(--hs, 1)) rotate(var(--tilt, 0deg));
+  transition: transform .9s var(--ease-out);
+}
+.fw.is-hover .fh { --hs: 1.045; transition-timing-function: var(--ease-spring-soft); }
+.fw.is-near  .fh { --hs: 1.015; }
+
+.fw svg { display: block; overflow: visible; pointer-events: none; }
+.stem-svg, .leaves-svg { position: absolute; left: 0; top: 0; }
+
+/* hit targets — only painted shapes catch the pointer (not the soft glow/shine discs) */
+.head-svg .hit, .head-svg .hit *,
+.leaves-svg .leaf, .leaves-svg .leaf * { pointer-events: visiblePainted; }
+.head-svg .hglow, .head-svg .shine { pointer-events: none; }
+
+/* Stem ------------------------------------------------------------------- */
+/* the stem svg stretches up from its base (a single composited transform per flower) */
+.stem-svg { transform-origin: 50% 100%; transform: scaleY(0); }
+.stem { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.is-growing .stem-svg {
+  animation: stemGrow var(--sd) var(--ease-grow) var(--d) forwards;
+}
+@keyframes stemGrow {
+  from { transform: scaleY(.002); }
+  to   { transform: scaleY(1); }
+}
+
+/* Leaves ----------------------------------------------------------------- */
+/* Growth is gated per flower so only the flowers that are actually animating do work:
+   .is-sprouting is added when a stem starts growing (leaves), and .is-blooming when it
+   finishes (bud, petals, stamens, sway, nod). Petals and leaves have their placement
+   baked into their geometry and animate with the individual scale/rotate properties,
+   which keeps them off the compositor (tiny SVG repaints instead of ~1,500 layers). */
+.leaf {
+  transform-box: view-box;
+  transform-origin: var(--ox, 0px) var(--oy, 0px);   /* the attachment point on the stem */
+  rotate: var(--fold, -40deg);
+  scale: .08;
+  fill-opacity: 0;
+  stroke-opacity: 0;
+}
+.fw.is-sprouting .leaf {
+  animation: leafUnfold var(--ld, .95s) var(--ease-spring-soft) calc(var(--sd) * var(--lt, .6)) forwards;
+}
+@keyframes leafUnfold {
+  0%   { rotate: var(--fold, -40deg); scale: .08; fill-opacity: 0; stroke-opacity: 0; }
+  45%  { fill-opacity: 1; stroke-opacity: 1; }
+  100% { rotate: 0deg; scale: 1; fill-opacity: 1; stroke-opacity: 1; }
+}
+
+/* Head ------------------------------------------------------------------- */
+.head, .head-nod, .head-pop {
+  position: absolute;
+  transform-origin: var(--ox) var(--oy);
+  pointer-events: none;
+}
+.head { transition: transform .8s var(--ease-spring-soft); }
+.head-nod, .head-pop { inset: 0; }
+.fw.is-hover .head { transform: scale(1.09); }
+
+.head-pop { transform: scale(0); }
+.fw.is-blooming .head-pop {
+  animation: budPop .7s var(--ease-spring) 0s both;
+}
+@keyframes budPop {
+  0%   { transform: scale(0); opacity: 0; }
+  55%  { transform: scale(1.14); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* the gentle nod is a separate compositor layer per head, so it is reserved for the
+   large foreground blooms where it is actually noticeable */
+.fw.is-blooming.fw--nod .head-nod {
+  animation: headNod var(--nt, 4.4s) ease-in-out calc(var(--bd) * 1.1 + .3s) infinite;
+}
+html.tier-lite .head-nod { animation: none !important; }
+@keyframes headNod {
+  0%, 100% { transform: rotate(0deg) scale(1); }
+  50%      { transform: rotate(var(--na, 3deg)) scale(1.02); }
+}
+
+/* Petals ----------------------------------------------------------------- */
+/* each petal scales/swirls out from the flower centre (its local origin) */
+.petal {
+  transform-box: view-box;
+  transform-origin: 0 0;
+  rotate: var(--in, -22deg);
+  scale: var(--s0, .15);
+  fill-opacity: 0;
+  stroke-opacity: 0;
+}
+.fw.is-blooming .petal {
+  animation: petalBloom calc(var(--bd) * .6) var(--ease-bloom) calc(.2s + var(--bd) * var(--pf, 0)) forwards;
+}
+@keyframes petalBloom {
+  0%   { rotate: var(--in, -22deg); scale: var(--s0, .15); fill-opacity: 0; stroke-opacity: 0; }
+  30%  { fill-opacity: 1; stroke-opacity: 1; }
+  72%  { rotate: calc(var(--in, -22deg) * -.14); scale: 1.05; }
+  100% { rotate: 0deg; scale: 1; fill-opacity: 1; stroke-opacity: 1; }
+}
+
+/* the closed bud cap that the petals unfurl from */
+.budcap { opacity: 1; }
+.fw.is-blooming .budcap {
+  animation: budFade .7s ease-out calc(.2s + var(--bd) * .22) forwards;
+}
+@keyframes budFade { to { opacity: 0; transform: scale(.6); } }
+
+.stamens {
+  transform-box: view-box;
+  transform-origin: 0 0;
+  scale: 0;
+  fill-opacity: 0;
+  stroke-opacity: 0;
+}
+.fw.is-blooming .stamens {
+  animation: stamensIn .9s var(--ease-out) calc(.2s + var(--bd) * .78) forwards;
+}
+@keyframes stamensIn { to { scale: 1; fill-opacity: 1; stroke-opacity: 1; } }
+
+/* hover glow / shine */
+.hglow { opacity: .55; transition: opacity .7s var(--ease-soft); }
+.shine { opacity: 0; transition: opacity .7s var(--ease-soft); }
+.fw.is-hover .hglow { opacity: 1; }
+.fw.is-hover .shine { opacity: .42; }
+
+/* Sway ------------------------------------------------------------------- */
+.fw.is-blooming .fs {
+  animation: sway var(--st, 6s) ease-in-out calc(var(--bd) + .3s) infinite;
+}
+/* every running animation is sampled on the main thread each frame, so trim the count
+   where it is least visible: short ground foliage never sways, and the muted background
+   layer holds still on lower-powered devices */
+.fw--ground .fs { animation: none !important; }
+html.tier-lite .fw--back .fs, html.tier-mid .fw--back .fs { animation: none !important; }
+@keyframes sway {
+  0%   { transform: rotate(0deg); }
+  30%  { transform: rotate(var(--sa, 2.5deg)); }
+  68%  { transform: rotate(calc(var(--sa, 2.5deg) * -.72)); }
+  100% { transform: rotate(0deg); }
+}
+
+/* Baked final states ------------------------------------------------------
+   A finished animation with fill-mode: forwards stays "active" and keeps its
+   element promoted to a compositor layer forever (≈1,600 layers for a full
+   garden). When each growth animation ends we bake its end state and remove
+   the animation, so the layer is released and the garden composites cheaply. */
+.stem-svg.done { animation: none !important; transform: none; }
+.leaf.done     { animation: none !important; rotate: none; scale: none; fill-opacity: 1; stroke-opacity: 1; }
+.petal.done    { animation: none !important; rotate: none; scale: none; fill-opacity: 1; stroke-opacity: 1; }
+.head-pop.done { animation: none !important; transform: none; opacity: 1; }
+.budcap.done   { animation: none !important; visibility: hidden; }
+.stamens.done  { animation: none !important; scale: none; fill-opacity: 1; stroke-opacity: 1; }
+
+/* Leaving (Bloom Again) -------------------------------------------------- */
+.garden.is-leaving .fw {
+  animation: flowerLeave 1s var(--ease-in-soft) var(--ld2, 0s) forwards;
+}
+@keyframes flowerLeave {
+  to { transform: scaleY(0) scaleX(.55); opacity: 0; }
+}
+
+/* --------------------------------------------------------------------------
+   Final message
+   -------------------------------------------------------------------------- */
+.message {
+  position: absolute; left: 50%;
+  top: clamp(64px, 12.5vh, 130px);
+  transform: translateX(-50%);
+  width: min(92vw, 780px);
+  text-align: center;
+  pointer-events: none;
+  z-index: 5;
+}
+.message__title, .message__sub, .message__rule { opacity: 0; }
+.message__title {
+  font: italic 500 clamp(34px, 5.8vw, 70px)/1.1 var(--font-display);
+  letter-spacing: -.005em;
+  color: #fff6f1;
+  text-shadow:
+    0 0 34px rgba(255, 180, 205, .38),
+    0 2px 24px rgba(20, 5, 15, .5);
+}
+.message__sub {
+  margin-top: 6px;
+  font: 400 clamp(17px, 2.2vw, 22px)/1.5 var(--font-display);
+  letter-spacing: .04em;
+  color: rgba(251, 238, 230, .82);
+  text-shadow: 0 2px 18px rgba(20, 5, 15, .55);
+}
+.message__rule {
+  display: flex; align-items: center; justify-content: center; gap: 12px;
+  margin: 12px auto 4px;
+  color: rgba(255, 210, 225, .7);
+}
+.message__rule span {
+  display: block; width: 46px; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 220, 232, .7));
+}
+.message__rule span:last-child { background: linear-gradient(90deg, rgba(255, 220, 232, .7), transparent); }
+.message__rule i { font-style: normal; font-size: 15px; line-height: 1; }
+
+.message.is-visible .message__title { animation: textIn 2s var(--ease-out) forwards; }
+.message.is-visible .message__rule  { animation: textIn 1.6s .55s var(--ease-out) forwards; }
+.message.is-visible .message__sub   { animation: textIn 2s .75s var(--ease-out) forwards; }
+.message.is-leaving .message__title,
+.message.is-leaving .message__rule,
+.message.is-leaving .message__sub { animation: textOut .8s var(--ease-soft) forwards; }
+@keyframes textIn {
+  0%   { opacity: 0; transform: translateY(24px); filter: blur(14px); }
+  55%  { filter: blur(0); }
+  100% { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
+@keyframes textOut {
+  to { opacity: 0; transform: translateY(-10px); filter: blur(8px); }
+}
+
+/* --------------------------------------------------------------------------
+   Bloom again
+   -------------------------------------------------------------------------- */
+.again {
+  position: absolute;
+  right: max(22px, env(safe-area-inset-right));
+  bottom: max(22px, env(safe-area-inset-bottom));
+  z-index: 6;
+  display: inline-flex; align-items: center; gap: 9px;
+  padding: 11px 18px 12px 14px;
+  border-radius: 999px;
+  font: 500 13px/1 var(--font-ui);
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: rgba(255, 240, 244, .9);
+  background: linear-gradient(160deg, rgba(70, 24, 58, .82), rgba(40, 12, 34, .78));
+  border: 1px solid rgba(255, 255, 255, .16);
+  box-shadow: 0 10px 30px -12px rgba(0, 0, 0, .6), 0 1px 0 rgba(255, 255, 255, .12) inset;
+  cursor: pointer;
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity .8s var(--ease-soft), transform .8s var(--ease-out), background .4s, border-color .4s, box-shadow .6s;
+}
+.again[hidden] { display: none; }
+.again.is-visible { opacity: 1; transform: translateY(0); }
+.again:hover {
+  background: linear-gradient(160deg, rgba(95, 32, 78, .9), rgba(60, 18, 50, .86));
+  border-color: rgba(255, 255, 255, .28);
+  box-shadow: 0 14px 34px -12px rgba(0, 0, 0, .7), 0 0 30px -6px rgba(255, 150, 190, .35), 0 1px 0 rgba(255, 255, 255, .16) inset;
+}
+.again:active { transform: translateY(1px) scale(.98); }
+.again__icon { font-size: 15px; transition: transform .6s var(--ease-spring); }
+.again:hover .again__icon { transform: rotate(-16deg) scale(1.15); }
+
+/* --------------------------------------------------------------------------
+   Mute toggle
+   -------------------------------------------------------------------------- */
+.mute {
+  position: absolute;
+  left: max(22px, env(safe-area-inset-left));
+  bottom: max(22px, env(safe-area-inset-bottom));
+  z-index: 6;
+  width: 42px; height: 42px;
+  display: grid; place-items: center;
+  border-radius: 50%;
+  font-size: 17px; line-height: 1;
+  color: rgba(255, 240, 244, .9);
+  background: linear-gradient(160deg, rgba(70, 24, 58, .82), rgba(40, 12, 34, .78));
+  border: 1px solid rgba(255, 255, 255, .16);
+  box-shadow: 0 10px 30px -12px rgba(0, 0, 0, .6), 0 1px 0 rgba(255, 255, 255, .12) inset;
+  cursor: pointer;
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity .8s var(--ease-soft), transform .8s var(--ease-out), background .4s, border-color .4s;
+}
+.mute[hidden] { display: none; }
+.mute.is-visible { opacity: 1; transform: translateY(0); }
+.mute:hover { background: linear-gradient(160deg, rgba(95, 32, 78, .9), rgba(60, 18, 50, .86)); border-color: rgba(255, 255, 255, .28); }
+.mute .mute__off { display: none; }
+.mute[aria-pressed="true"] .mute__on { display: none; }
+.mute[aria-pressed="true"] .mute__off { display: inline; }
+
+/* --------------------------------------------------------------------------
+   Responsive
+   -------------------------------------------------------------------------- */
+@media (max-width: 640px) {
+  .mute { left: max(14px, env(safe-area-inset-left)); bottom: max(18px, env(safe-area-inset-bottom)); width: 40px; height: 40px; }
+  .message { top: max(54px, 9.5vh); width: 94vw; }
+  .message__title { font-size: clamp(30px, 8.6vw, 44px); }
+  .message__sub { font-size: clamp(15px, 4.2vw, 18px); }
+  .again {
+    right: 50%; transform: translate(50%, 12px);
+    bottom: max(18px, env(safe-area-inset-bottom));
+    padding: 12px 18px 13px 14px;
+  }
+  .again.is-visible { transform: translate(50%, 0); }
+  .again:active { transform: translate(50%, 1px) scale(.98); }
+}
+@media (max-height: 520px) and (orientation: landscape) {
+  .message { top: 18px; }
+  .message__title { font-size: clamp(26px, 5vw, 40px); }
+  .message__rule { margin: 6px auto 2px; }
+}
+
+/* --------------------------------------------------------------------------
+   Reduced motion
+   -------------------------------------------------------------------------- */
+html.reduced .stem-svg,
+html.reduced .leaf,
+html.reduced .petal,
+html.reduced .head-pop,
+html.reduced .stamens,
+html.reduced .budcap {
+  animation-duration: .01s !important;
+  animation-delay: 0s !important;
+}
+html.reduced .fs,
+html.reduced .head-nod { animation: none !important; }
+html.reduced .garden { transition: opacity 1s ease; transform: none; opacity: 0; }
+html.reduced .scene.is-active .garden { opacity: 1; }
+html.reduced .fh, html.reduced .head { transition: none; }
+html.reduced .message.is-visible .message__title,
+html.reduced .message.is-visible .message__rule,
+html.reduced .message.is-visible .message__sub { animation-duration: .6s; animation-delay: 0s; }
+html.reduced .garden.is-leaving .fw { animation-duration: .4s; animation-delay: 0s; }

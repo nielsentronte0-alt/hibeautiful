@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Flowers for You 🌷</title>
+  <meta name="description" content="A little something made just for you — open your bouquet.">
+  <meta name="theme-color" content="#140a1a">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/opening.css">
+  <link rel="stylesheet" href="css/garden.css">
+</head>
+<body>
+  <!-- Layered animated background: gradient · light blobs · rays · grain · vignette -->
+  <div class="bg" aria-hidden="true">
+    <div class="bg__base"></div>
+    <div class="bg__blob bg__blob--1"></div>
+    <div class="bg__blob bg__blob--2"></div>
+    <div class="bg__blob bg__blob--3"></div>
+    <div class="bg__rays"></div>
+    <div class="bg__grain"></div>
+    <div class="bg__vignette"></div>
+  </div>
+
+  <!-- Depth-sorted effect canvases: far petals + light motes behind the garden, near petals + sparkles in front -->
+  <canvas id="fx-back" class="fx fx--back" aria-hidden="true"></canvas>
+
+  <main id="scene" class="scene">
+    <div id="garden" class="garden" aria-hidden="true">
+      <div class="garden__layer garden__layer--back" data-layer="back"></div>
+      <div class="garden__layer garden__layer--mid" data-layer="mid"></div>
+      <div class="garden__layer garden__layer--front" data-layer="front"></div>
+    </div>
+
+    <!-- children stay `hidden` until the reveal so the live region announces a real DOM change -->
+    <div id="message" class="message" aria-live="polite" aria-atomic="true">
+      <h2 class="message__title" hidden>These flowers are for you.</h2>
+      <div class="message__rule" aria-hidden="true" hidden><span></span><i>❦</i><span></span></div>
+      <p class="message__sub" hidden>Because you deserve something beautiful.</p>
+    </div>
+
+    <button id="again" class="again" type="button" hidden>
+      <span class="again__icon" aria-hidden="true">🌸</span>
+      <span>Bloom Again</span>
+    </button>
+    <button id="mute" class="mute" type="button" hidden aria-pressed="false" aria-label="Mute music" title="Mute music">
+      <span class="mute__on" aria-hidden="true">🔊</span><span class="mute__off" aria-hidden="true">🔇</span>
+    </button>
+  </main>
+
+  <!-- Countdown shown between the click and the first bloom (music plays underneath) -->
+  <div id="countdown" class="countdown" aria-live="polite" hidden>
+    <div class="countdown__disc">
+      <svg class="countdown__ring" viewBox="0 0 100 100" aria-hidden="true" focusable="false">
+        <circle class="countdown__track" cx="50" cy="50" r="46"/>
+        <circle class="countdown__prog" cx="50" cy="50" r="46" pathLength="100"/>
+      </svg>
+      <div class="countdown__num" id="countdown-num">10</div>
+    </div>
+    <p class="countdown__hint">your bouquet is on its way</p>
+  </div>
+
+  <audio id="music" src="countdown.mp3" preload="auto"></audio>
+
+  <canvas id="fx-front" class="fx fx--front" aria-hidden="true"></canvas>
+
+  <!-- Opening screen -->
+  <section id="opening" class="opening" aria-label="Opening">
+    <div class="opening__dim"></div>
+    <div class="opening__card glass">
+      <div class="opening__tilt">
+        <div class="opening__icon" aria-hidden="true"><span>🌷</span></div>
+        <h1 class="opening__title">Flowers <em>for</em> You</h1>
+        <p class="opening__sub">A little something made just for you</p>
+        <span class="btn-wrap">
+          <button id="open-btn" class="btn" type="button">
+            <span class="btn__glow" aria-hidden="true"></span>
+            <span class="btn__ring" aria-hidden="true"></span>
+            <span class="btn__sheen" aria-hidden="true"></span>
+            <span class="btn__label">Open the Bouquet</span>
+          </button>
+        </span>
+        <p class="opening__hint">click to open your bouquet</p>
+      </div>
+    </div>
+    <div class="opening__flash" aria-hidden="true"></div>
+  </section>
+
+  <!-- Custom cursor (fine pointers only) and flower tooltip -->
+  <div id="cursor" class="cursor" aria-hidden="true">
+    <div class="cursor__halo"></div>
+    <div class="cursor__dot"></div>
+  </div>
+  <div id="tip" class="tip" aria-hidden="true"></div>
+
+  <!-- Shared SVG gradient definitions used by every flower -->
+  <svg class="defs" width="0" height="0" aria-hidden="true" focusable="false"><defs id="defs"></defs></svg>
+
+  <noscript><p class="noscript">These flowers need JavaScript to bloom. 🌷</p></noscript>
+
+  <script src="js/utils.js"></script>
+  <script src="js/fx.js"></script>
+  <script src="js/cursor.js"></script>
+  <script src="js/flowers.js"></script>
+  <script src="js/garden.js"></script>
+  <script src="js/opening.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>

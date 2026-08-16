@@ -1,0 +1,198 @@
+/* ==========================================================================
+   Flowers for You — base: tokens, reset, atmospheric background, canvases,
+   custom cursor, tooltip
+   ========================================================================== */
+
+:root {
+  --bg-0: #120818;
+  --bg-1: #22102a;
+  --bg-2: #3b1535;
+  --cream: #fbeee6;
+  --blush: #ffb9cb;
+  --rose: #ff8fb0;
+  --rose-deep: #e0587f;
+  --gold: #f7d9a8;
+
+  --font-display: "Cormorant Garamond", "Cormorant", "Playfair Display", Georgia, "Times New Roman", serif;
+  --font-ui: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+
+  --ease-out: cubic-bezier(.16, 1, .3, 1);
+  --ease-soft: cubic-bezier(.45, 0, .2, 1);
+  --ease-in-soft: cubic-bezier(.6, 0, .8, .3);
+  --ease-spring: cubic-bezier(.34, 1.45, .64, 1);
+  --ease-spring-soft: cubic-bezier(.3, 1.2, .5, 1);
+  --ease-grow: cubic-bezier(.25, .6, .25, 1);
+  --ease-bloom: cubic-bezier(.22, 1.1, .36, 1);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { height: 100%; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+
+body {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+  background: var(--bg-0);
+  color: var(--cream);
+  font-family: var(--font-display);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html.fine-pointer, html.fine-pointer * { cursor: none !important; }
+
+[hidden] { display: none !important; }
+button { font: inherit; color: inherit; background: none; border: 0; }
+button:focus { outline: none; }
+button:focus-visible { outline: 2px solid rgba(255, 220, 230, .85); outline-offset: 4px; }
+
+.noscript {
+  position: fixed; inset: 0; display: grid; place-items: center;
+  font-size: 22px; color: var(--cream); z-index: 100;
+}
+
+/* --------------------------------------------------------------------------
+   Background
+   -------------------------------------------------------------------------- */
+.bg { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+
+.bg__base {
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(120% 70% at 50% 108%, rgba(160, 52, 100, .55) 0%, rgba(160, 52, 100, 0) 62%),
+    radial-gradient(70% 55% at 12% 0%, rgba(80, 36, 110, .55), rgba(80, 36, 110, 0) 62%),
+    radial-gradient(60% 45% at 90% 8%, rgba(140, 48, 84, .35), rgba(140, 48, 84, 0) 60%),
+    linear-gradient(180deg, #110716 0%, #21102a 42%, #351334 78%, #43183a 100%);
+}
+
+.bg__blob {
+  position: absolute;
+  border-radius: 50%;
+  opacity: var(--blob-o, .85);
+  background: radial-gradient(circle at 50% 50%, var(--c) 0%, transparent 62%);
+  animation: blobDrift var(--t, 46s) ease-in-out infinite alternate;
+  transition: opacity 1.4s var(--ease-soft);
+  will-change: transform;
+}
+.bg__blob--1 { --c: rgba(255, 130, 160, .26); width: 72vmax; height: 72vmax; left: -22vmax; top: -24vmax; --t: 46s; }
+.bg__blob--2 { --c: rgba(160, 100, 230, .22); width: 64vmax; height: 64vmax; right: -24vmax; top: 6vmax; --t: 58s; animation-delay: -21s; }
+.bg__blob--3 { --c: rgba(255, 170, 125, .2); width: 60vmax; height: 60vmax; left: 18vmax; bottom: -32vmax; --t: 52s; animation-delay: -36s; }
+html.btn-hover .bg__blob--3 { --blob-o: 1.05; }
+html.btn-hover .bg__blob--1 { --blob-o: .95; }
+
+@keyframes blobDrift {
+  0%   { transform: translate3d(0, 0, 0) scale(1); }
+  50%  { transform: translate3d(6vmax, -4vmax, 0) scale(1.08); }
+  100% { transform: translate3d(-4vmax, 5vmax, 0) scale(.96); }
+}
+
+.bg__rays {
+  position: absolute; left: 50%; top: -22vh;
+  width: 170vmax; height: 170vmax;
+  margin-left: -85vmax;
+  transform-origin: 50% 0;
+  transform: rotate(0deg);
+  background: conic-gradient(from 141deg at 50% 0%,
+    transparent 0deg, transparent 6deg,
+    rgba(255, 214, 228, .06) 10deg, rgba(255, 214, 228, .06) 13deg, transparent 18deg,
+    transparent 27deg, rgba(255, 224, 208, .045) 31deg, rgba(255, 224, 208, .045) 33deg, transparent 38deg,
+    transparent 47deg, rgba(255, 210, 230, .07) 52deg, rgba(255, 210, 230, .07) 56deg, transparent 62deg,
+    transparent 70deg, rgba(255, 220, 220, .04) 73deg, rgba(255, 220, 220, .04) 75deg, transparent 80deg,
+    transparent 360deg);
+  -webkit-mask-image: radial-gradient(60% 55% at 50% 0%, #000 20%, transparent 100%);
+  mask-image: radial-gradient(60% 55% at 50% 0%, #000 20%, transparent 100%);
+  animation: raysSway 38s ease-in-out infinite alternate;
+  will-change: transform;
+}
+@keyframes raysSway {
+  from { transform: rotate(-2.2deg); }
+  to   { transform: rotate(2.2deg); }
+}
+
+.bg__grain {
+  position: absolute; inset: 0;
+  opacity: .075;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .9 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 220px 220px;
+}
+
+.bg__vignette {
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse 80% 70% at 50% 45%, transparent 40%, rgba(8, 3, 10, .58) 100%);
+}
+html.reduced .bg__blob, html.reduced .bg__rays { animation: none; }
+@media (prefers-reduced-motion: reduce) {
+  .bg__blob, .bg__rays { animation: none; }
+}
+
+/* --------------------------------------------------------------------------
+   Effect canvases
+   -------------------------------------------------------------------------- */
+.fx { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.fx--back { z-index: 1; }
+.fx--front { z-index: 45; }   /* above the opening card too: petals drift in front of the glass */
+
+/* --------------------------------------------------------------------------
+   Custom cursor
+   -------------------------------------------------------------------------- */
+.cursor {
+  position: fixed; left: 0; top: 0; z-index: 60;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .5s var(--ease-soft);
+  display: none;
+}
+html.fine-pointer .cursor { display: block; }
+.cursor.is-visible { opacity: 1; }
+.cursor__dot, .cursor__halo {
+  position: fixed; left: 0; top: 0;
+  border-radius: 50%;
+  will-change: transform;
+}
+.cursor__dot {
+  width: 7px; height: 7px; margin: -3.5px 0 0 -3.5px;
+  background: #fff6f9;
+  box-shadow: 0 0 10px 2px rgba(255, 210, 225, .85), 0 0 24px 6px rgba(255, 150, 190, .35);
+}
+.cursor__halo {
+  width: 92px; height: 92px; margin: -46px 0 0 -46px;
+  /* no mix-blend-mode here: a blend layer above the garden forces a full-screen render surface */
+  background: radial-gradient(circle, rgba(255, 196, 218, .32) 0%, rgba(255, 186, 212, .12) 38%, rgba(255, 178, 205, 0) 68%);
+  transition: opacity .5s var(--ease-soft);
+}
+.cursor.is-active .cursor__halo { opacity: 1; }
+.cursor.is-down .cursor__dot { box-shadow: 0 0 14px 4px rgba(255, 210, 225, .95), 0 0 34px 10px rgba(255, 150, 190, .45); }
+
+/* --------------------------------------------------------------------------
+   Flower tooltip
+   -------------------------------------------------------------------------- */
+.tip {
+  position: fixed; left: 0; top: 0; z-index: 55;
+  pointer-events: none;
+  padding: 6px 12px 7px;
+  border-radius: 999px;
+  font: italic 500 15px/1 var(--font-display);
+  letter-spacing: .02em;
+  color: #fff3f0;
+  background: rgba(38, 12, 32, .72);
+  border: 1px solid rgba(255, 255, 255, .14);
+  box-shadow: 0 6px 20px -8px rgba(0, 0, 0, .6);
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  transform: translate3d(var(--x, -200px), var(--y, -200px), 0) translate(14px, 18px) scale(.9);
+  transition: opacity .35s var(--ease-soft), transform .35s var(--ease-out), visibility 0s .35s;
+}
+.tip.is-visible { opacity: 1; visibility: visible; transition-delay: 0s; transform: translate3d(var(--x, -200px), var(--y, -200px), 0) translate(14px, 18px) scale(1); }
+.tip b { font-weight: 600; font-style: normal; }
+.tip i { opacity: .8; }
+
+@media (hover: none) {
+  .tip { display: none; }
+}
